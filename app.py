@@ -59,16 +59,15 @@ if data.empty:
     st.stop()
 
 # Add Indicators & Signals
-st.write("Data type:", type(data))
-st.write("Data preview:")
-st.write(data.head() if hasattr(data, "head") else data)
-st.write("Columns:", data.columns if hasattr(data, "columns") else "No columns")
-
 st.write("✅ Data type:", type(data))
 st.write("✅ Data columns:", data.columns if hasattr(data, "columns") else "No columns")
-st.write("✅ Data['Close'] type:", type(data['Close']) if 'Close' in data else "Missing")
-st.write("✅ Data preview:")
-st.write(data.head() if hasattr(data, "head") else data)
+if 'Close' in data:
+    st.write("✅ Type of data['Close']:", type(data['Close']))
+    st.write("✅ Sample of data['Close']:", data['Close'].head())
+else:
+    st.write("❌ 'Close' column is missing")
+st.write("✅ Full data preview:")
+st.write(data.head())
 
 data = add_signals(data)
 data = apply_voting_strategy(data, show_macd, show_bb, show_stoch, show_rsi, show_adx)
