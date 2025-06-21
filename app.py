@@ -55,6 +55,7 @@ show_adx = st.sidebar.checkbox("ADX", False)
 # Load Data
 data = yf.download(ticker, start=start, end=end)
 
+
 if data.empty:
     st.error("⚠️ No data found for that ticker and date range.")
     st.stop()
