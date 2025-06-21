@@ -5,12 +5,16 @@ import ta
 def add_signals(df):
     df = df.copy()
 
-    # Ensure required columns exist and are numeric
+    # Clean essential columns
     required_cols = ['Close', 'High', 'Low']
     for col in required_cols:
         if col not in df.columns:
             raise ValueError(f"Missing column: {col}")
-        df[col] = pd.to_numeric(df[col], errors='coerce')
+        series = df[col]
+        if isinstance(series, pd.Series):
+            df[col] = pd.to_numeric(series, errors='coerce')
+        else:
+            raise TypeError(f"Expected Series for '{col}', got {type(series)}")
 
     df.dropna(subset=required_cols, inplace=True)
 
@@ -21,8 +25,7 @@ def add_signals(df):
     df['MACD_Signal'] = df['MACD'].ewm(span=9).mean()
 
     # Bollinger Bands
-    df['BB_High'] = np.nan
-    df['BB_Low'] = np.nan
+    df['BB_High'], df['BB_Low'] = np.nan, np.nan
     if len(df) >= 20:
         try:
             bb = ta.volatility.BollingerBands(close=df['Close'], window=20)
@@ -32,8 +35,7 @@ def add_signals(df):
             pass
 
     # Stochastic Oscillator
-    df['%K'] = np.nan
-    df['%D'] = np.nan
+    df['%K'], df['%D'] = np.nan, np.nan
     if len(df) >= 14:
         try:
             stoch = ta.momentum.StochasticOscillator(df['High'], df['Low'], df['Close'])
@@ -60,28 +62,34 @@ def apply_voting_strategy(df, use_macd=True, use_bb=True, use_stoch=True, use_rs
     df = df.copy()
     df['Votes'] = 0
 
-    if use_macd and 'MACD' in df.columns and 'MACD_Signal' in df.columns:
-        macd_mask = df['MACD'].notna() & df['MACD_Signal'].notna()
-        df.loc[macd_mask, 'Votes'] += ((df.loc[macd_mask, 'MACD'] > df.loc[macd_mask, 'MACD_Signal']) &
-                                       (df.loc[macd_mask, 'MACD'].shift(1) <= df.loc[macd_mask, 'MACD_Signal'].shift(1))).astype(int)
+    # MACD logic
+    if use_macd and {'MACD', 'MACD_Signal'}.issubset(df.columns):
+        mask = df['MACD'].notna() & df['MACD_Signal'].notna()
+        crossover = (df['MACD'] > df['MACD_Signal']) & (df['MACD'].shift(1) <= df['MACD_Signal'].shift(1))
+        df.loc[mask, 'Votes'] += crossover[mask].astype(int)
 
+    # Bollinger logic
     if use_bb and 'BB_Low' in df.columns:
-        bb_mask = df['Close'].notna() & df['BB_Low'].notna()
-        df.loc[bb_mask, 'Votes'] += (df.loc[bb_mask, 'Close'] < df.loc[bb_mask, 'BB_Low']).astype(int)
+        bb_votes = (df['Close'] < df['BB_Low']).astype(int)
+        df['Votes'] = df['Votes'].add(bb_votes, fill_value=0)
 
-    if use_stoch and '%K' in df.columns and '%D' in df.columns:
-        stoch_mask = df['%K'].notna() & df['%D'].notna()
-        df.loc[stoch_mask, 'Votes'] += ((df.loc[stoch_mask, '%K'] > df.loc[stoch_mask, '%D']) &
-                                        (df.loc[stoch_mask, '%K'] < 20)).astype(int)
+    # Stochastic logic
+    if use_stoch and {'%K', '%D'}.issubset(df.columns):
+        mask = df['%K'].notna() & df['%D'].notna()
+        stoch_cond = (df['%K'] > df['%D']) & (df['%K'] < 20)
+        df.loc[mask, 'Votes'] += stoch_cond[mask].astype(int)
 
+    # RSI logic
     if use_rsi and 'RSI' in df.columns:
-        rsi_mask = df['RSI'].notna()
-        df.loc[rsi_mask, 'Votes'] += (df.loc[rsi_mask, 'RSI'] < 30).astype(int)
+        rsi_votes = (df['RSI'] < 30).astype(int)
+        df['Votes'] = df['Votes'].add(rsi_votes, fill_value=0)
 
+    # ADX logic
     if use_adx and 'ADX' in df.columns:
-        adx_mask = df['ADX'].notna()
-        df.loc[adx_mask, 'Votes'] += (df.loc[adx_mask, 'ADX'] > 25).astype(int)
+        adx_votes = (df['ADX'] > 25).astype(int)
+        df['Votes'] = df['Votes'].add(adx_votes, fill_value=0)
 
+    # Composite Signal
     df['Composite_Signal'] = 0
     df.loc[df['Votes'] >= 2, 'Composite_Signal'] = 1
     df.loc[df['Votes'] <= -2, 'Composite_Signal'] = -1
