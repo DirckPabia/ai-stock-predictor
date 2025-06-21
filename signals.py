@@ -12,12 +12,16 @@ def add_signals(df):
     df['MACD_Signal'] = df['MACD'].ewm(span=9).mean()
 
     # --- Bollinger Bands (safe fallback) ---
-    if len(df) >= 20 and df['Close'].isna().sum() == 0:
-        try:
-            bb = ta.volatility.BollingerBands(close=df['Close'], window=20)
-            df['BB_High'] = bb.bollinger_hband()
-            df['BB_Low'] = bb.bollinger_lband()
-        except Exception:
+    if len(df) >= 20:
+        if df['Close'].isna().sum() == 0:
+            try:
+                bb = ta.volatility.BollingerBands(close=df['Close'], window=20)
+                df['BB_High'] = bb.bollinger_hband()
+                df['BB_Low'] = bb.bollinger_lband()
+            except Exception:
+                df['BB_High'] = np.nan
+                df['BB_Low'] = np.nan
+        else:
             df['BB_High'] = np.nan
             df['BB_Low'] = np.nan
     else:
