@@ -14,10 +14,12 @@ def add_signals(df):
     for col in required_cols:
         if col not in df.columns:
             raise KeyError(f"Missing required column: {col}")
+        series = df[col]
+        if not isinstance(series, pd.Series):
+            raise TypeError(f"Expected Series for '{col}', got {type(series)}")
         try:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            df[col] = pd.to_numeric(series, errors='coerce')
         except Exception as e:
-            print(f"DEBUG: df[{col}] = {df[col]}")
             raise TypeError(f"Failed to convert column '{col}' to numeric: {e}")
 
 
