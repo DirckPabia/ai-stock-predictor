@@ -36,7 +36,7 @@ if st.button("Run Strategy"):
     try:
         st.info(f"📡 Downloading data for {ticker}...")
         data = yf.download(ticker, start=start, end=end)
-        data = add_signals(data)
+        
 
 
         if data.empty:
