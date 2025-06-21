@@ -6,3 +6,4 @@ plotly>=5.0
 ta>=0.10
 tensorflow>=2.10,<2.14
 scikit-learn>=1.0
+keras>=2.10,<2.14
