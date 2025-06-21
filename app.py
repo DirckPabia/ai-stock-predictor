@@ -13,7 +13,9 @@ market_type = st.radio("Choose a market type:", ["🇵🇭 PH Stocks", "🌍 Glo
 
 # 2️⃣ Ticker selection
 if market_type == "🇵🇭 PH Stocks":
-    ticker = st.selectbox("Select a PH stock:", ["ALI.PS", "AC.PS", "SM.PS", "BPI.PS", "TEL.PS"])
+    ticker = st.selectbox("Select a PH stock:", ["Jollibee (JFC)": "JFC.PS", "Ayala Land (ALI)": "ALI.PS", "SM Prime (SMPH)": "SMPH.PS",
+    "BDO Unibank (BDO)": "BDO.PS", "Ayala Corp (AC)": "AC.PS", "Globe Telecom (GLO)": "GLO.PS",
+    "PLDT (TEL)": "TEL.PS", "URC (URC)": "URC.PS", "Meralco (MER)": "MER.PS"])
 elif market_type == "🌍 Global":
     ticker = st.selectbox("Select a global stock:", ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"])
 else:
