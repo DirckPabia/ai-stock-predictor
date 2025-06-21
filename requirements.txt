@@ -5,3 +5,4 @@ numpy
 matplotlib
 scikit-learn
 ta
+plotly>=5.0.0
