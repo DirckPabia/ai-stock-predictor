@@ -1,3 +1,5 @@
+[server]
+fileWatcherType = "none"
 [theme]
 base = "light"
 primaryColor = "#636EFA"
