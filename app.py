@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from keras.models import Sequential
+from tensorflow.keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
 from sklearn.preprocessing import MinMaxScaler
 from email.message import EmailMessage
