@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import ta  # Make sure 'ta' is in your requirements.txt
+import ta  # Technical Analysis library
 
 def add_signals(df):
     df = df.copy()
@@ -11,8 +11,14 @@ def add_signals(df):
             raise KeyError(f"Missing required column: {col}")
 
         series = df[col]
+
+        # 👉 THIS IS THE FIX: Catch nested DataFrames
         if isinstance(series, pd.DataFrame):
-            raise TypeError(f"Expected Series for '{col}', got DataFrame. Use df['{col}'], not df[['{col}']]")
+            raise TypeError(
+                f"Expected Series for '{col}', got DataFrame. "
+                f"Did you use double square brackets like df[['{col}']]? "
+                f"Use single brackets: df['{col}']"
+            )
 
         try:
             df[col] = pd.to_numeric(series, errors='coerce')
