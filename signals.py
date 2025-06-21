@@ -14,7 +14,8 @@ def add_signals(df):
     for col in required_cols:
         if col not in df.columns:
             raise KeyError(f"Missing required column: {col}")
-        series = df[col]
+        series = df[col].squeeze() if isinstance(df[col], pd.DataFrame) else df[col]
+
         if not isinstance(series, pd.Series):
             raise TypeError(f"Expected Series for '{col}', got {type(series)}")
         try:
