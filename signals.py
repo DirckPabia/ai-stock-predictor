@@ -5,19 +5,15 @@ import ta
 def add_signals(df):
     df = df.copy()
 
-    # Clean essential columns
     required_cols = ['Close', 'High', 'Low']
-    for col in required_cols:
-        if col not in df.columns:
-            raise ValueError(f"Missing column: {col}")
-        series = df[col]
-        for col in required_cols:
-            if col not in df.columns:
-                raise ValueError(f"Missing column: {col}")
-            if not isinstance(col, str):
-                raise TypeError(f"Column name must be a string, got {type(col)}")
-            df[col] = pd.to_numeric(df[col].squeeze(), errors='coerce')
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise KeyError(f"Missing required columns: {missing}")
 
+    for col in required_cols:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    df.dropna(subset=required_cols, inplace=True)
 
 
     df.dropna(subset=required_cols, inplace=True)
