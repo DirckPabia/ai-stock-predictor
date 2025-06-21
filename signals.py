@@ -14,7 +14,10 @@ def add_signals(df):
         for col in required_cols:
             if col not in df.columns:
                 raise ValueError(f"Missing column: {col}")
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+            if not isinstance(col, str):
+                raise TypeError(f"Column name must be a string, got {type(col)}")
+            df[col] = pd.to_numeric(df[col].squeeze(), errors='coerce')
+
 
 
     df.dropna(subset=required_cols, inplace=True)
