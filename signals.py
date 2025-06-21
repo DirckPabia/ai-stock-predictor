@@ -11,11 +11,7 @@ def add_signals(df):
     df['MACD'] = df['EMA12'] - df['EMA26']
     df['MACD_Signal'] = df['MACD'].ewm(span=9).mean()
 
-<<<<<<< HEAD
-    # Bollinger Bands (check row length)
-=======
     # Bollinger Bands
->>>>>>> f152c84 (Add signal module and update app with voting strategy integration)
     if len(df) >= 20:
         bb = ta.volatility.BollingerBands(close=df['Close'], window=20)
         df['BB_High'] = bb.bollinger_hband()
@@ -39,10 +35,6 @@ def add_signals(df):
 
     return df.dropna()
 
-<<<<<<< HEAD
-
-=======
->>>>>>> f152c84 (Add signal module and update app with voting strategy integration)
 def apply_voting_strategy(df, use_macd=True, use_bb=True, use_stoch=True, use_rsi=True, use_adx=False):
     df = df.copy()
     df['Votes'] = 0
