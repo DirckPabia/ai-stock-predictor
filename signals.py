@@ -12,10 +12,13 @@ def add_signals(df):
 
     # Ensure all are Series and numeric
     for col in required_cols:
-        if isinstance(df[col], pd.Series):
+        if col not in df.columns:
+            raise KeyError(f"Missing required column: {col}")
+        try:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-        else:
-            raise TypeError(f"Expected Series for {col}, got {type(df[col])}")
+        except Exception as e:
+            raise TypeError(f"Failed to convert column '{col}' to numeric: {e}")
+
 
     df.dropna(subset=required_cols, inplace=True)
 
