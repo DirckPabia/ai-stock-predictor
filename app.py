@@ -10,29 +10,7 @@ st.set_page_config(page_title="🧠 AI Stock Predictor", layout="wide")
 
 # Sidebar Controls
 st.sidebar.header("📈 Ticker & Date")
-# --- Stock Selection ---
-ph_stocks = {
-    "Jollibee (JFC)": "JFC.PS", "Ayala Land (ALI)": "ALI.PS", "SM Prime (SMPH)": "SMPH.PS",
-    "BDO Unibank (BDO)": "BDO.PS", "Ayala Corp (AC)": "AC.PS", "Globe Telecom (GLO)": "GLO.PS",
-    "PLDT (TEL)": "TEL.PS", "URC (URC)": "URC.PS", "Meralco (MER)": "MER.PS"
-}
-us_sectors = {
-    "Tech": ["AAPL", "MSFT", "NVDA"], "Finance": ["JPM", "BAC", "GS"], 
-    "Energy": ["XOM", "CVX", "BP"]
-}
-
-c1, c2, c3 = st.columns(3)
-with c1:
-    ph_choice = st.selectbox("🇵🇭 PH Stock", list(ph_stocks.keys()))
-with c2:
-    sector = st.selectbox("🏦 US Sector", list(us_sectors.keys()))
-with c3:
-    us_choice = st.selectbox("🌍 US Stock", us_sectors[sector])
-
-override = st.text_input("🔎 Custom Symbol (optional)", value="")
-ticker = override.upper() if override else ph_stocks.get(ph_choice) or us_choice
-st.markdown(f"**Ticker:** `{ticker}`")
-
+ticker = st.sidebar.text_input("Stock Symbol", "AAPL")
 start = st.sidebar.date_input("Start Date", pd.to_datetime("2023-01-01"))
 end = st.sidebar.date_input("End Date", pd.Timestamp.today())
 
