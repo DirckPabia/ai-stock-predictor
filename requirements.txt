@@ -1,8 +1,8 @@
 streamlit
-pandas
 yfinance
+pandas
 numpy
 matplotlib
 scikit-learn
-tensorflow-cpu==2.11.0
-keras==2.11.0
+tensorflow-cpu==2.16.1
+keras==2.16.0
