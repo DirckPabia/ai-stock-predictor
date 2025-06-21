@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
-from keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import Dense, LSTM, Dropout
 from sklearn.preprocessing import MinMaxScaler
 from email.message import EmailMessage
 import smtplib
