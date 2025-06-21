@@ -64,6 +64,12 @@ st.write("Data preview:")
 st.write(data.head() if hasattr(data, "head") else data)
 st.write("Columns:", data.columns if hasattr(data, "columns") else "No columns")
 
+st.write("✅ Data type:", type(data))
+st.write("✅ Data columns:", data.columns if hasattr(data, "columns") else "No columns")
+st.write("✅ Data['Close'] type:", type(data['Close']) if 'Close' in data else "Missing")
+st.write("✅ Data preview:")
+st.write(data.head() if hasattr(data, "head") else data)
+
 data = add_signals(data)
 data = apply_voting_strategy(data, show_macd, show_bb, show_stoch, show_rsi, show_adx)
 
