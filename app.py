@@ -3,7 +3,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
 from signals import add_signals, apply_voting_strategy
 
 st.set_page_config(page_title="🧠 AI Stock Predictor", layout="wide")
