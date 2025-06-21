@@ -11,7 +11,7 @@ def add_signals(df):
         raise KeyError(f"Missing required columns: {missing}")
 
     # Ensure all are Series and numeric
-   for col in required_cols:
+    for col in required_cols:
         if col not in df.columns:
             raise KeyError(f"Missing required column: {col}")
         try:
@@ -19,6 +19,7 @@ def add_signals(df):
         except Exception as e:
             print(f"DEBUG: df[{col}] = {df[col]}")
             raise TypeError(f"Failed to convert column '{col}' to numeric: {e}")
+
 
     df.dropna(subset=required_cols, inplace=True)
 
