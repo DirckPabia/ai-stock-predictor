@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import ta
+import ta  # Technical Analysis library
 
 def add_signals(df):
     df = df.copy()
@@ -10,11 +10,12 @@ def add_signals(df):
     if missing:
         raise KeyError(f"Missing required columns: {missing}")
 
+    # Ensure all are Series and numeric
     for col in required_cols:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-
-    df.dropna(subset=required_cols, inplace=True)
-
+        if isinstance(df[col], pd.Series):
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        else:
+            raise TypeError(f"Expected Series for {col}, got {type(df[col])}")
 
     df.dropna(subset=required_cols, inplace=True)
 
@@ -25,7 +26,8 @@ def add_signals(df):
     df['MACD_Signal'] = df['MACD'].ewm(span=9).mean()
 
     # Bollinger Bands
-    df['BB_High'], df['BB_Low'] = np.nan, np.nan
+    df['BB_High'] = np.nan
+    df['BB_Low'] = np.nan
     if len(df) >= 20:
         try:
             bb = ta.volatility.BollingerBands(close=df['Close'], window=20)
@@ -56,40 +58,34 @@ def add_signals(df):
     except Exception:
         df['ADX'] = np.nan
 
-    return df.dropna()
+    return df
 
 def apply_voting_strategy(df, use_macd=True, use_bb=True, use_stoch=True, use_rsi=True, use_adx=False):
     df = df.copy()
     df['Votes'] = 0
 
-    # MACD logic
-    if use_macd and {'MACD', 'MACD_Signal'}.issubset(df.columns):
-        mask = df['MACD'].notna() & df['MACD_Signal'].notna()
-        crossover = (df['MACD'] > df['MACD_Signal']) & (df['MACD'].shift(1) <= df['MACD_Signal'].shift(1))
-        df.loc[mask, 'Votes'] += crossover[mask].astype(int)
+    # MACD crossover
+    if use_macd and 'MACD' in df and 'MACD_Signal' in df:
+        macd_cross = (df['MACD'] > df['MACD_Signal']) & (df['MACD'].shift(1) <= df['MACD_Signal'].shift(1))
+        df['Votes'] += macd_cross.astype(int)
 
-    # Bollinger logic
-    if use_bb and 'BB_Low' in df.columns:
-        bb_votes = (df['Close'] < df['BB_Low']).astype(int)
-        df['Votes'] = df['Votes'].add(bb_votes, fill_value=0)
+    # Bollinger Bounce
+    if use_bb and 'BB_Low' in df:
+        df['Votes'] += (df['Close'] < df['BB_Low']).astype(int)
 
-    # Stochastic logic
-    if use_stoch and {'%K', '%D'}.issubset(df.columns):
-        mask = df['%K'].notna() & df['%D'].notna()
-        stoch_cond = (df['%K'] > df['%D']) & (df['%K'] < 20)
-        df.loc[mask, 'Votes'] += stoch_cond[mask].astype(int)
+    # Stochastic Oversold Crossover
+    if use_stoch and '%K' in df and '%D' in df:
+        k_cross = (df['%K'] > df['%D']) & (df['%K'] < 20)
+        df['Votes'] += k_cross.astype(int)
 
-    # RSI logic
-    if use_rsi and 'RSI' in df.columns:
-        rsi_votes = (df['RSI'] < 30).astype(int)
-        df['Votes'] = df['Votes'].add(rsi_votes, fill_value=0)
+    # RSI Oversold
+    if use_rsi and 'RSI' in df:
+        df['Votes'] += (df['RSI'] < 30).astype(int)
 
-    # ADX logic
-    if use_adx and 'ADX' in df.columns:
-        adx_votes = (df['ADX'] > 25).astype(int)
-        df['Votes'] = df['Votes'].add(adx_votes, fill_value=0)
+    # ADX Threshold
+    if use_adx and 'ADX' in df:
+        df['Votes'] += (df['ADX'] > 25).astype(int)
 
-    # Composite Signal
     df['Composite_Signal'] = 0
     df.loc[df['Votes'] >= 2, 'Composite_Signal'] = 1
     df.loc[df['Votes'] <= -2, 'Composite_Signal'] = -1
