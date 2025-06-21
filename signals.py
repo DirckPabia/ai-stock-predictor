@@ -12,12 +12,12 @@ def add_signals(df):
 
         series = df[col]
 
-        # 👉 THIS IS THE FIX: Catch nested DataFrames
+        # ✅ FIX: Prevent nested DataFrames (e.g., df[['Close']])
         if isinstance(series, pd.DataFrame):
             raise TypeError(
-                f"Expected Series for '{col}', got DataFrame. "
-                f"Did you use double square brackets like df[['{col}']]? "
-                f"Use single brackets: df['{col}']"
+                f"Expected Series for '{col}', but got DataFrame instead.\n"
+                f"Hint: you may have used double square brackets like df[['{col}']] — "
+                f"use single brackets: df['{col}']"
             )
 
         try:
@@ -39,7 +39,8 @@ def add_signals(df):
         df['BB_High'] = bb.bollinger_hband()
         df['BB_Low'] = bb.bollinger_lband()
     except Exception:
-        df['BB_High'], df['BB_Low'] = np.nan, np.nan
+        df['BB_High'] = np.nan
+        df['BB_Low'] = np.nan
 
     # Stochastic Oscillator
     try:
@@ -47,7 +48,8 @@ def add_signals(df):
         df['%K'] = stoch.stoch()
         df['%D'] = stoch.stoch_signal()
     except Exception:
-        df['%K'], df['%D'] = np.nan, np.nan
+        df['%K'] = np.nan
+        df['%D'] = np.nan
 
     # RSI
     try:
@@ -68,20 +70,25 @@ def apply_voting_strategy(df, use_macd=True, use_bb=True, use_stoch=True, use_rs
     df = df.copy()
     df['Votes'] = 0
 
+    # MACD strategy
     if use_macd and 'MACD' in df and 'MACD_Signal' in df:
-        macd_cross = (df['MACD'] > df['MACD_Signal']) & (df['MACD'].shift(1) <= df['MACD_Signal'].shift(1))
-        df['Votes'] += macd_cross.astype(int)
+        crossover = (df['MACD'] > df['MACD_Signal']) & (df['MACD'].shift(1) <= df['MACD_Signal'].shift(1))
+        df['Votes'] += crossover.astype(int)
 
+    # Bollinger Band bounce
     if use_bb and 'BB_Low' in df:
         df['Votes'] += (df['Close'] < df['BB_Low']).astype(int)
 
+    # Stochastic oversold crossover
     if use_stoch and '%K' in df and '%D' in df:
         stoch_cross = (df['%K'] > df['%D']) & (df['%K'] < 20)
         df['Votes'] += stoch_cross.astype(int)
 
+    # RSI oversold
     if use_rsi and 'RSI' in df:
         df['Votes'] += (df['RSI'] < 30).astype(int)
 
+    # ADX trend strength
     if use_adx and 'ADX' in df:
         df['Votes'] += (df['ADX'] > 25).astype(int)
 
