@@ -16,9 +16,11 @@ def add_signals(df):
 
     if 'Close' in df.columns:
         close_col = df['Close']
-        if close_col.isna().sum() == 0:
-            if len(df) >= 20:
+        try:
+            if bool(close_col.isna().sum() == 0) and len(df) >= 20:
                 bb_ready = True
+        except Exception:
+            bb_ready = False
 
     if bb_ready:
         try:
@@ -31,8 +33,6 @@ def add_signals(df):
     else:
         df['BB_High'] = np.nan
         df['BB_Low'] = np.nan
-
-
 
     # --- Stochastic Oscillator ---
     if len(df) >= 14:
