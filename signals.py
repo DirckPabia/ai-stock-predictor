@@ -12,21 +12,22 @@ def add_signals(df):
     df['MACD_Signal'] = df['MACD'].ewm(span=9).mean()
 
     # --- Bollinger Bands (safe fallback) ---
-    if len(df) >= 20:
-        if df['Close'].isna().sum() == 0:
-            try:
-                bb = ta.volatility.BollingerBands(close=df['Close'], window=20)
-                df['BB_High'] = bb.bollinger_hband()
-                df['BB_Low'] = bb.bollinger_lband()
-            except Exception:
-                df['BB_High'] = np.nan
-                df['BB_Low'] = np.nan
-        else:
+    bb_ready = False
+    if 'Close' in df.columns and df['Close'].isna().sum() == 0 and len(df) >= 20:
+        bb_ready = True
+
+    if bb_ready:
+        try:
+            bb = ta.volatility.BollingerBands(close=df['Close'], window=20)
+            df['BB_High'] = bb.bollinger_hband()
+            df['BB_Low'] = bb.bollinger_lband()
+        except Exception:
             df['BB_High'] = np.nan
             df['BB_Low'] = np.nan
     else:
         df['BB_High'] = np.nan
         df['BB_Low'] = np.nan
+
 
     # --- Stochastic Oscillator ---
     if len(df) >= 14:
