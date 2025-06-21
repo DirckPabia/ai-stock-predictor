@@ -71,8 +71,11 @@ def apply_voting_strategy(df, use_macd=True, use_bb=True, use_stoch=True, use_rs
                         (df['MACD'].shift(1) <= df['MACD_Signal'].shift(1))).astype(int)
 
     if use_bb and 'BB_Low' in df.columns:
-        bb_mask = df['BB_Low'].notna() & df['Close'].notna()
-        df.loc[bb_mask, 'Votes'] += (df.loc[bb_mask, 'Close'] < df.loc[bb_mask, 'BB_Low']).astype(int)
+        try:
+            bb_votes = (df['Close'] < df['BB_Low']).astype(int)
+            df['Votes'] = df['Votes'].add(bb_votes, fill_value=0)
+        except Exception:
+            pass  # Optional: log or warn
 
 
     if use_stoch:
