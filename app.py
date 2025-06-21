@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import plotly.graph_objects as go
 
 from signals import add_signals, apply_voting_strategy
 
@@ -35,19 +36,56 @@ if st.button("Run Strategy"):
         st.info("📡 Downloading data...")
         data = yf.download(ticker, start=start, end=end)
 
-        st.subheader("Raw Price Data")
-        st.dataframe(data.tail())
+        if data.empty:
+            st.warning("No data returned for this ticker and date range.")
+        else:
+            st.subheader("Raw Price Data")
+            st.dataframe(data.tail())
 
-        # 🎯 Add signals (structure validated inside)
-        data = add_signals(data)
+            # 🧠 Add signals & apply voting
+            data = add_signals(data)
+            data = apply_voting_strategy(data)
 
-        # 🧠 Apply voting strategy
-        data = apply_voting_strategy(data)
+            st.subheader("Signal-Enhanced Data")
+            st.dataframe(data.tail())
 
-        st.subheader("Signal-Enhanced Data")
-        st.dataframe(data.tail())
+            # 📊 Optional plot
+            def plot_signals(df):
+                fig = go.Figure()
 
-        st.success("✅ Analysis complete!")
+                fig.add_trace(go.Candlestick(
+                    x=df.index,
+                    open=df['Open'],
+                    high=df['High'],
+                    low=df['Low'],
+                    close=df['Close'],
+                    name="Price"
+                ))
+
+                # Buy signals
+                buys = df[df['Composite_Signal'] == 1]
+                fig.add_trace(go.Scatter(
+                    x=buys.index,
+                    y=buys['Close'],
+                    mode='markers',
+                    marker=dict(size=10, color='green', symbol='triangle-up'),
+                    name='Buy Signal'
+                ))
+
+                # Optional: MACD
+                if 'MACD' in df:
+                    fig.add_trace(go.Scatter(
+                        x=df.index,
+                        y=df['MACD'],
+                        line=dict(color='blue', dash='dot'),
+                        name='MACD'
+                    ))
+
+                fig.update_layout(title="📊 Composite Signals Chart", xaxis_rangeslider_visible=False)
+                return fig
+
+            st.plotly_chart(plot_signals(data), use_container_width=True)
+            st.success("✅ Analysis complete!")
 
     except Exception as e:
         st.error(f"🚨 Something went wrong:\n\n{e}")
