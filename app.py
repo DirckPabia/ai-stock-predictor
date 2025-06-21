@@ -7,7 +7,33 @@ from signals import add_signals, apply_voting_strategy
 st.title("📈 AI Stock Predictor")
 
 # Get user input
-ticker = st.text_input("Enter a stock ticker (e.g. AAPL):", value="AAPL")
+# Radio selector for market type
+market_type = st.radio(
+    "Choose a market type:",
+    ["🇵🇭 PH Stocks", "🌍 Global", "📝 Custom"],
+    horizontal=True
+)
+
+# Dropdown options per market
+if market_type == "🇵🇭 PH Stocks":
+    ticker = st.selectbox("Select a PH stock:", [
+        "ALI.PS",  # Ayala Land
+        "AC.PS",   # Ayala Corporation
+        "SM.PS",   # SM Investments
+        "BPI.PS",  # Bank of the Philippine Islands
+        "TEL.PS"   # PLDT
+    ])
+elif market_type == "🌍 Global":
+    ticker = st.selectbox("Select a global stock:", [
+        "AAPL",  # Apple
+        "MSFT",  # Microsoft
+        "GOOGL", # Alphabet
+        "AMZN",  # Amazon
+        "TSLA"   # Tesla
+    ])
+else:
+    ticker = st.text_input("Enter a custom stock ticker (e.g. NVDA, JFC.PS):", value="AAPL")
+
 start = st.date_input("Start date", value=pd.to_datetime("2023-01-01"))
 end = st.date_input("End date", value=pd.to_datetime("today"))
 
