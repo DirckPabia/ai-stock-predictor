@@ -1,120 +1,163 @@
 import streamlit as st
-import pandas as pd
 import yfinance as yf
-import plotly.graph_objects as go
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
+from sklearn.preprocessing import MinMaxScaler
+from email.message import EmailMessage
+import smtplib
+from collections import Counter
 
-from signals import add_signals, apply_voting_strategy
+from signal_engine import prediction_signal, rsi_signal, ma_signal, combine_signals
+from backtest_engine import run_backtest
 
-st.set_page_config(page_title="AI Stock Predictor", layout="wide")
-st.title("📈 AI Stock Predictor")
+# --- Streamlit Setup ---
+st.set_page_config("AI Stock Predictor", layout="wide")
+st.title("📈 AI Stock Predictor + Multi-Signal Strategy + Backtest")
 
-# 1️⃣ Market selection
-market_type = st.radio("Choose a market type:", ["🇵🇭 PH Stocks", "🌍 Global", "📝 Custom"], horizontal=True)
+# --- Stock Selection ---
+ph_stocks = {
+    "Jollibee (JFC)": "JFC.PS", "Ayala Land (ALI)": "ALI.PS", "SM Prime (SMPH)": "SMPH.PS",
+    "BDO Unibank (BDO)": "BDO.PS", "Ayala Corp (AC)": "AC.PS", "Globe Telecom (GLO)": "GLO.PS",
+    "PLDT (TEL)": "TEL.PS", "URC (URC)": "URC.PS", "Meralco (MER)": "MER.PS"
+}
+us_sectors = {
+    "Tech": ["AAPL", "MSFT", "NVDA"], "Finance": ["JPM", "BAC", "GS"], 
+    "Energy": ["XOM", "CVX", "BP"]
+}
 
-# 2️⃣ Ticker selection
-if market_type == "🇵🇭 PH Stocks":
-    ticker = st.selectbox("Select a PH stock:", ["ALI.PS", "AC.PS","ALI.PS","JFC.PS","MER.PS", "SM.PS", "BPI.PS","BDO.PS", "TEL.PS","URC.PS"])
-elif market_type == "🌍 Global":
-    ticker = st.selectbox("Select a global stock:", ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"])
-else:
-    ticker = st.text_input("Enter a custom ticker (e.g. NVDA, JFC.PS):", value="AAPL")
+c1, c2, c3 = st.columns(3)
+with c1:
+    ph_choice = st.selectbox("🇵🇭 PH Stock", list(ph_stocks.keys()))
+with c2:
+    sector = st.selectbox("🏦 US Sector", list(us_sectors.keys()))
+with c3:
+    us_choice = st.selectbox("🌍 US Stock", us_sectors[sector])
 
-# 3️⃣ Date range
-start = st.date_input("Start date", value=pd.to_datetime("2023-01-01"))
-end = st.date_input("End date", value=pd.to_datetime("today"))
+override = st.text_input("🔎 Custom Symbol (optional)", value="")
+ticker = override.upper() if override else ph_stocks.get(ph_choice) or us_choice
+st.markdown(f"**Ticker:** `{ticker}`")
 
-# 4️⃣ Strategy toggles
-st.markdown("### 🧠 Strategy Configuration")
-use_macd = st.checkbox("Use MACD", True)
-use_bb = st.checkbox("Use Bollinger Bands", True)
-use_stoch = st.checkbox("Use Stochastic Oscillator", True)
-use_rsi = st.checkbox("Use RSI", True)
-use_adx = st.checkbox("Use ADX", False)
+# --- Date & Email ---
+start = st.date_input("Start Date", pd.to_datetime("2010-01-01"))
+end = st.date_input("End Date", pd.to_datetime("2025-01-01"))
+sender = st.text_input("📤 Gmail")
+receiver = st.text_input("📥 Recipient")
+password = st.text_input("🔐 App Password", type="password")
 
-# 5️⃣ Run
-if st.button("Run Strategy"):
-    try:
-        st.info(f"📡 Downloading data for {ticker}...")
-        data = yf.download(ticker, start=start, end=end)
-        
+# --- Strategy Toggles ---
+st.markdown("### 🎛 Signal Strategies")
+use_pred = st.checkbox("🧠 LSTM Prediction", True)
+use_rsi = st.checkbox("📉 RSI Indicator", True)
+use_ma = st.checkbox("📊 Moving Averages", True)
 
+# --- Signal Sensitivity ---
+st.markdown("### ⚙️ Sensitivity Controls")
+threshold = st.slider("Prediction Threshold (%)", 1, 10, 2) / 100
+rsi_low = st.slider("RSI Buy < ", 10, 40, 30)
+rsi_high = st.slider("RSI Sell > ", 60, 90, 70)
+ma_short = st.slider("Short-Term MA", 5, 30, 20)
+ma_long = st.slider("Long-Term MA", 30, 100, 50)
 
-        if data.empty:
-            st.warning("⚠️ No data found. Please check your ticker or date range.")
-        else:
-            st.subheader("📄 Raw Price Data")
-            st.dataframe(data.tail())
+# --- Run ---
+if st.button("🚀 Predict & Backtest"):
+    df = yf.download(ticker, start=start, end=end)
+    if df.empty:
+        st.error("No data found.")
+        st.stop()
 
-            # ➕ Add signals
-            data = add_signals(data)
+    df['MA_Short'] = df['Close'].rolling(ma_short).mean()
+    df['MA_Long'] = df['Close'].rolling(ma_long).mean()
+    df['RSI'] = 100 - (100 / (1 + df['Close'].pct_change().rolling(14).mean()))
+    df.dropna(inplace=True)
 
-            # 🧠 Apply strategy
-            data = apply_voting_strategy(
-                data,
-                use_macd=use_macd,
-                use_bb=use_bb,
-                use_stoch=use_stoch,
-                use_rsi=use_rsi,
-                use_adx=use_adx
-            )
+    # LSTM inputs
+    features = df[['Close', 'MA_Long', 'RSI']].values
+    scaler = MinMaxScaler()
+    scaled = scaler.fit_transform(features)
+    X, y = [], []
+    for i in range(60, len(scaled)):
+        X.append(scaled[i-60:i])
+        y.append(scaled[i, 0])
+    X, y = np.array(X), np.array(y)
 
-            st.subheader("📊 Signal-Enhanced Data")
-            st.dataframe(data.tail())
+    # Train/Test split
+    if len(X) < 100:
+        st.error("Not enough data to train.")
+        st.stop()
+    split = int(len(X)*0.8)
+    X_train, X_test = X[:split], X[split:]
+    y_train, y_test = y[:split], y[split:]
 
-            # 📈 Plot signals
-            def plot_signals(df):
-                fig = go.Figure()
+    # LSTM model
+    model = Sequential()
+    model.add(LSTM(64, return_sequences=True, input_shape=(X.shape[1], X.shape[2])))
+    model.add(Dropout(0.2))
+    model.add(LSTM(64))
+    model.add(Dropout(0.2))
+    model.add(Dense(1))
+    model.compile(optimizer="adam", loss="mse")
+    model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
 
-                fig.add_trace(go.Candlestick(
-                    x=df.index,
-                    open=df['Open'],
-                    high=df['High'],
-                    low=df['Low'],
-                    close=df['Close'],
-                    name="Price"
-                ))
+    preds = model.predict(X_test)
+    pred_price = scaler.inverse_transform(np.hstack((preds, np.zeros((len(preds), 2)))))[:, 0]
+    actual_price = scaler.inverse_transform(np.hstack((y_test.reshape(-1,1), np.zeros((len(y_test), 2)))))[:, 0]
 
-                # Buy signals
-                buys = df[df['Composite_Signal'] == 1]
-                fig.add_trace(go.Scatter(
-                    x=buys.index,
-                    y=buys['Close'],
-                    mode='markers',
-                    marker=dict(size=10, color='green', symbol='triangle-up'),
-                    name='Buy Signal'
-                ))
+    # --- Signal generation ---
+    signals = []
+    if use_pred: signals.append(prediction_signal(actual_price, pred_price, threshold))
+    if use_rsi: signals.append(rsi_signal(df['RSI'].values[-len(pred_price):], rsi_low, rsi_high))
+    if use_ma: signals.append(ma_signal(df['MA_Short'].values[-len(pred_price):], df['MA_Long'].values[-len(pred_price):]))
+    if not signals:
+        st.error("Please enable at least one strategy.")
+        st.stop()
 
-                # Optional MACD
-                if 'MACD' in df:
-                    fig.add_trace(go.Scatter(
-                        x=df.index,
-                        y=df['MACD'],
-                        name='MACD',
-                        line=dict(color='blue', dash='dot'),
-                        yaxis='y2'
-                    ))
+    final_signal = combine_signals(*signals)
 
-                fig.update_layout(
-                    title="📈 Price & Buy Signals",
-                    xaxis_rangeslider_visible=False,
-                    yaxis=dict(title='Price'),
-                    yaxis2=dict(
-                        title='MACD',
-                        overlaying='y',
-                        side='right',
-                        showgrid=False
-                    ),
-                    height=600
-                )
-                return fig
+    # --- Backtest ---
+    results = run_backtest(final_signal, actual_price)
+    st.metric("💼 Final Portfolio", f"{results['final_value']:,.2f}")
+    st.metric("📈 ROI", f"{results['roi']:.2f}%")
+    st.metric("🎯 Win Rate", f"{results['win_rate']:.1f}%")
+    st.metric("📉 Max Drawdown", f"{results['max_drawdown']:.2f}%")
 
-            st.plotly_chart(plot_signals(data), use_container_width=True)
+    # --- Plot signals & equity ---
+    fig1, ax1 = plt.subplots(figsize=(12,5))
+    ax1.plot(actual_price, label="Actual", color="blue")
+    ax1.plot(pred_price, label="Predicted", color="orange")
+    colors = ['green' if s == 'Buy' else 'red' if s == 'Sell' else 'gray' for s in final_signal]
+    ax1.scatter(range(len(pred_price)), pred_price, c=colors, alpha=0.4, label="Signal")
+    ax1.set_title("Price vs Prediction")
+    ax1.legend()
+    st.pyplot(fig1)
 
-            # 📣 Summary
-            signals_fired = data[data['Composite_Signal'] == 1]
-            st.markdown(f"### ✅ Buy signals fired: **{len(signals_fired)}** times")
-            if not signals_fired.empty:
-                st.dataframe(signals_fired[['Close', 'Votes']].tail())
+    fig2, ax2 = plt.subplots(figsize=(10,3))
+    ax2.plot(results['history'], color="purple")
+    ax2.set_title("📊 Equity Curve")
+    st.pyplot(fig2)
 
-    except Exception as e:
-        st.error(f"🚨 Something went wrong:\n\n{e}")
+    # --- Table preview ---
+    st.dataframe(pd.DataFrame({
+        "Actual": actual_price[-10:],
+        "Predicted": pred_price[-10:],
+        "Signal": final_signal[-10:],
+        "Action": results['actions'][-10:]
+    }))
+
+    # --- Email Signal Alert ---
+    if sender and receiver and password and final_signal[-1] in ['Buy', 'Sell']:
+        msg = f"Signal: {final_signal[-1]}\nActual: {actual_price[-1]:.2f}\nPredicted: {pred_price[-1]:.2f}\nROI: {results['roi']:.2f}%"
+        try:
+            email = EmailMessage()
+            email['Subject'] = f"[{ticker}] Signal Alert: {final_signal[-1]}"
+            email['From'] = sender
+            email['To'] = receiver
+            email.set_content(msg)
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(sender, password)
+                smtp.send_message(email)
+            st.success("📩 Signal email sent!")
+        except:
+            st.warning("Email failed. Check credentials.")
