@@ -8,9 +8,40 @@ from signals import add_signals, apply_voting_strategy
 
 st.set_page_config(page_title="🧠 AI Stock Predictor", layout="wide")
 
+# Philippine Stocks
+ph_tickers = {
+    "Ayala Corp (AC)": "AC.PS",
+    "SM Investments (SM)": "SM.PS",
+    "BDO Unibank (BDO)": "BDO.PS",
+    "Jollibee Foods (JFC)": "JFC.PS"
+}
+
+# Global Stocks
+global_tickers = {
+    "Apple (AAPL)": "AAPL",
+    "Tesla (TSLA)": "TSLA",
+    "Amazon (AMZN)": "AMZN",
+    "Google (GOOG)": "GOOG"
+}
+
 # Sidebar Controls
 st.sidebar.header("📈 Ticker & Date")
-ticker = st.sidebar.text_input("Stock Symbol", "AAPL")
+st.sidebar.subheader("🔍 Ticker Input Method")
+symbol_mode = st.sidebar.radio("Choose input type:", ["Dropdown", "Manual"])
+
+if symbol_mode == "Dropdown":
+    region = st.sidebar.radio("Market Region", ["Global", "Philippines"])
+
+    if region == "Global":
+        symbol = st.sidebar.selectbox("Global Stocks", list(global_tickers.keys()))
+        ticker = global_tickers[symbol]
+    else:
+        symbol = st.sidebar.selectbox("PH Stocks", list(ph_tickers.keys()))
+        ticker = ph_tickers[symbol]
+
+else:
+    ticker = st.sidebar.text_input("Enter Custom Symbol", "AAPL")
+
 start = st.sidebar.date_input("Start Date", pd.to_datetime("2023-01-01"))
 end = st.sidebar.date_input("End Date", pd.Timestamp.today())
 
