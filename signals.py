@@ -70,7 +70,7 @@ def apply_voting_strategy(df, use_macd=True, use_bb=True, use_stoch=True, use_rs
         df['Votes'] += ((df['MACD'] > df['MACD_Signal']) & 
                         (df['MACD'].shift(1) <= df['MACD_Signal'].shift(1))).astype(int)
 
-    if use_bb:
+    if use_bb and 'BB_Low' in df.columns and df['BB_Low'].notna().all():
         df['Votes'] += (df['Close'] < df['BB_Low']).astype(int)
 
     if use_stoch:
